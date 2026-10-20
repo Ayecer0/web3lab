@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Лабораторная работа 3: Валидация данных в форме с использованием Constraint Validation API">
+  <title>Лабораторная работа №3 — Валидация форм</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="#" class="brand-logo" aria-label="На главную">Мой сайт</a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <ul class="nav-list">
+          <li><a href="#about" class="nav-link">О курсе</a></li>
+          <li><a href="#docs" class="nav-link">Материалы</a></li>
+          <li><a href="#contacts" class="nav-link">Контакты</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <button type="button" id="open-register-btn" class="btn btn-primary">Регистрация</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <section class="container hero-section">
+      <div class="hero-content">
+        <h1>Лабораторная работа №3</h1>
+        <p class="subtitle">Валидация данных в форме, Constraint Validation API и доступные интерфейсы</p>
+      </div>
+
+      <div id="result-container" class="result-container" hidden aria-live="polite">
+        <h2>Данные успешно получены</h2>
+        <div id="user-card" class="user-card"></div>
+      </div>
+    </section>
+
+    <!-- Модальное окно с формой -->
+    <dialog id="register-dialog" class="register-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-body">
+        <div class="dialog-header">
+          <h2 id="dialog-title">Создание аккаунта</h2>
+          <button type="button" id="close-dialog-btn" class="btn-close" aria-label="Закрыть модальное окно">&times;</button>
+        </div>
+
+        <form id="registration-form" class="registration-form" novalidate>
+          <!-- Имя -->
+          <div class="form-group" id="group-name">
+            <label for="field-name" class="form-label">
+              Имя <span class="required-notice">(обязательно)</span>
+            </label>
+            <input
+              type="text"
+              id="field-name"
+              name="name"
+              class="form-control"
+              required
+              minlength="2"
+              autocomplete="name"
+              aria-describedby="field-name-error"
+            >
+            <div id="field-name-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Почта -->
+          <div class="form-group" id="group-email">
+            <label for="field-email" class="form-label">
+              Электронная почта <span class="required-notice">(обязательно)</span>
+            </label>
+            <input
+              type="email"
+              id="field-email"
+              name="email"
+              class="form-control"
+              required
+              autocomplete="email"
+              aria-describedby="field-email-error"
+            >
+            <div id="field-email-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Телефон -->
+          <div class="form-group" id="group-phone">
+            <label for="field-phone" class="form-label">
+              Номер телефона <span class="optional-notice">(необязательно)</span>
+            </label>
+            <input
+              type="tel"
+              id="field-phone"
+              name="phone"
+              class="form-control"
+              placeholder="+7 (999) 000-00-00"
+              autocomplete="tel"
+              aria-describedby="field-phone-error"
+            >
+            <div id="field-phone-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Возраст -->
+          <div class="form-group" id="group-age">
+            <label for="field-age" class="form-label">
+              Возраст <span class="optional-notice">(необязательно)</span>
+            </label>
+            <input
+              type="number"
+              id="field-age"
+              name="age"
+              class="form-control"
+              min="1"
+              max="99"
+              step="1"
+              autocomplete="off"
+              aria-describedby="field-age-error"
+            >
+            <div id="field-age-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Ссылка на профиль GitHub -->
+          <div class="form-group" id="group-github-url">
+            <label for="field-github-url" class="form-label">
+              Ссылка на GitHub <span class="optional-notice">(при заполнении даты)</span>
+            </label>
+            <input
+              type="url"
+              id="field-github-url"
+              name="githubUrl"
+              class="form-control"
+              placeholder="https://github.com/username"
+              autocomplete="url"
+              aria-describedby="field-github-url-error"
+            >
+            <div id="field-github-url-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Дата регистрации на GitHub -->
+          <div class="form-group" id="group-github-date">
+            <label for="field-github-date" class="form-label">
+              Дата регистрации на GitHub <span class="optional-notice">(при заполнении ссылки)</span>
+            </label>
+            <input
+              type="date"
+              id="field-github-date"
+              name="githubDate"
+              class="form-control"
+              autocomplete="off"
+              aria-describedby="field-github-date-error"
+            >
+            <div id="field-github-date-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Пароль -->
+          <div class="form-group" id="group-password">
+            <label for="field-password" class="form-label">
+              Пароль <span class="required-notice">(обязательно)</span>
+            </label>
+            <div class="password-input-wrapper">
+              <input
+                type="password"
+                id="field-password"
+                name="password"
+                class="form-control"
+                required
+                minlength="6"
+                autocomplete="new-password"
+                aria-describedby="field-password-error"
+              >
+              <button
+                type="button"
+                id="toggle-password-btn"
+                class="btn btn-secondary btn-show-password"
+                aria-label="Зажмите для просмотра пароля"
+              >
+                Показать
+              </button>
+            </div>
+            <div id="field-password-error" class="error-message" aria-live="polite" hidden></div>
+          </div>
+
+          <!-- Кнопки управления формой -->
+          <div class="form-actions">
+            <button type="submit" id="submit-form-btn" class="btn btn-primary">Зарегистрироваться</button>
+            <button type="button" id="cancel-dialog-btn" class="btn btn-secondary">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+  </main>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
