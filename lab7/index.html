@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Гончарюк Вадим - Лабораторная работа №7</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #0f172a;
+      --border-color: #cbd5e1;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #166534;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      margin: 0;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 1rem;
+      font-weight: 500;
+      color: #334155;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.65rem 0.75rem;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+    }
+    #test-container {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Гончарюк Вадим - Лабораторная работа №7. Производительность DOM</h1>
+    
+    <div class="card">
+      <p>Нажмите кнопку ниже для запуска автоматизированного тестирования производительности (30 итераций для каждого метода на объемах 1 000 и 10 000 элементов).</p>
+      <button id="start-btn" class="btn">Запустить тестирование</button>
+      <div id="status">Тестирование не запущено.</div>
+    </div>
+
+    <div class="card">
+      <h2>Результаты эксперимента</h2>
+      <div style="overflow-x: auto;">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Операция</th>
+              <th>Метод</th>
+              <th>Элементов (n)</th>
+              <th>Итераций</th>
+              <th>Среднее время (мс)</th>
+              <th>Ст. отклонение (s)</th>
+              <th>Доверительный интервал (95%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="7" style="text-align: center; color: #64748b;">Данные появятся после завершения тестов</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Скрытый контейнер для манипуляций с DOM -->
+  <div id="test-container"></div>
+
+  <script>
+    'use strict';
+
+    const ITERATIONS = 30;
+    const SIZES = [1000, 10000];
+
+    const container = document.getElementById('test-container');
+    const startBtn = document.getElementById('start-btn');
+    const statusDiv = document.getElementById('status');
+    const tableBody = document.querySelector('#results-table tbody');
+
+    // Генерация массива данных для тестов
+    function createNodes(count) {
+      const fragment = document.createElement('div');
+      for (let i = 0; i < count; i++) {
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.textContent = `Элемент #${i}`;
+        fragment.appendChild(item);
+      }
+      return fragment.children; // HTMLCollection или массив элементов
+    }
+
+    // Статистические расчеты
+    function calculateStats(measurements) {
+      const n = measurements.length;
+      const mean = measurements.reduce((sum, val) => sum + val, 0) / n;
+      
+      const variance = measurements.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (n - 1);
+      const stdDev = Math.sqrt(variance);
+      
+      // CI = mean ± 1.96 * (stdDev / sqrt(n))
+      const marginOfError = 1.96 * (stdDev / Math.sqrt(n));
+      const ciLower = mean - marginOfError;
+      const ciUpper = mean + marginOfError;
+
+      return {
+        mean: mean.toFixed(2),
+        stdDev: stdDev.toFixed(2),
+        ci: `[${ciLower.toFixed(2)} ...${ciUpper.toFixed(2)}]`
+      };
+    }
+
+    // Методы добавления (Append)
+    const appendMethods = {
+      'appendChild': (items) => {
+        container.innerHTML = '';
+        for (let i = 0; i < items.length; i++) {
+          container.appendChild(items[i].cloneNode(true));
+        }
+      },
+      'DocumentFragment': (items) => {
+        container.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < items.length; i++) {
+          fragment.appendChild(items[i].cloneNode(true));
+        }
+        container.appendChild(fragment);
+      },
+      'innerHTML': (items) => {
+        let html = '';
+        for (let i = 0; i < items.length; i++) {
+          html += items[i].outerHTML;
+        }
+        container.innerHTML = html;
+      },
+      'insertAdjacentHTML': (items) => {
+        container.innerHTML = '';
+        for (let i = 0; i < items.length; i++) {
+          container.insertAdjacentHTML('beforeend', items[i].outerHTML);
+        }
+      }
+    };
+
+    // Методы удаления/очистки (Remove)
+    const removeMethods = {
+      'innerHTML = ""': () => {
+        container.innerHTML = '';
+      },
+      'removeChild (цикл)': () => {
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+      },
+      'replaceChildren()': () => {
+        container.replaceChildren();
+      }
+    };
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function runBenchmarks() {
+      startBtn.disabled = true;
+      tableBody.innerHTML = '';
+      const results = [];
+
+      try {
+        // --- ТЕСТИРОВАНИЕ ДОБАВЛЕНИЯ ---
+        for (const size of SIZES) {
+          const sampleItems = Array.from(createNodes(size));
+
+          for (const [methodName, methodFn] of Object.entries(appendMethods)) {
+            statusDiv.textContent = `Тестирование добавления: ${methodName} (${size} элементов)...`;
+            
+            // Прогрев JIT (2 холостых прогона)
+            for (let w = 0; w < 2; w++) {
+              methodFn(sampleItems);
+            }
+            await wait(20);
+
+            const measurements = [];
+            for (let i = 0; i < ITERATIONS; i++) {
+              const start = performance.now();
+              methodFn(sampleItems);
+              const end = performance.now();
+              measurements.push(end - start);
+              
+              // Асинхронная пауза для сборщика мусора и отрисовки
+              if (i % 5 === 0) await yieldToMain();
+            }
+
+            const stats = calculateStats(measurements);
+            results.push({
+              operation: 'Добавление (Append)',
+              method: methodName,
+              size: size,
+              iterations: ITERATIONS,
+              ...stats
+            });
+          }
+        }
+
+        // --- ТЕСТИРОВАНИЕ УДАЛЕНИЯ ---
+        for (const size of SIZES) {
+          for (const [methodName, methodFn] of Object.entries(removeMethods)) {
+            statusDiv.textContent = `Тестирование удаления: ${methodName} (${size} элементов)...`;
+
+            const sampleItems = Array.from(createNodes(size));
+
+            // Прогрев JIT
+            for (let w = 0; w < 2; w++) {
+              container.replaceChildren(...sampleItems.map(el => el.cloneNode(true)));
+              methodFn();
+            }
+            await wait(20);
+
+            const measurements = [];
+            for (let i = 0; i < ITERATIONS; i++) {
+              // Предварительно наполняем контейнер перед удалением
+              container.replaceChildren(...sampleItems.map(el => el.cloneNode(true)));
+
+              const start = performance.now();
+              methodFn();
+              const end = performance.now();
+              measurements.push(end - start);
+
+              if (i % 5 === 0) await yieldToMain();
+            }
+
+            const stats = calculateStats(measurements);
+            results.push({
+              operation: 'Удаление (Remove)',
+              method: methodName,
+              size: size,
+              iterations: ITERATIONS,
+              ...stats
+            });
+          }
+        }
+
+        // Заполнение таблицы результатов
+        tableBody.innerHTML = '';
+        results.forEach(res => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${res.operation}</td>
+            <td><strong>${res.method}</strong></td>
+            <td>${res.size}</td>
+            <td>${res.iterations}</td>
+            <td>${res.mean}</td>
+            <td>${res.stdDev}</td>
+            <td>${res.ci}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+
+        statusDiv.textContent = 'Тестирование успешно завершено!';
+      } catch (err) {
+        console.error(err);
+        statusDiv.textContent = 'Произошла ошибка во время тестов.';
+      } finally {
+        startBtn.disabled = false;
+        container.innerHTML = '';
+      }
+    }
+
+    function yieldToMain() {
+      return new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    startBtn.addEventListener('click', runBenchmarks);
+  </script>
+</body>
+</html>
